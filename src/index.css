@@ -1,0 +1,106 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  code, kbd, samp, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+/* Sticky Column 1: SF ID */
+.sticky-sfid {
+  position: sticky;
+  left: 0;
+  width: 105px;
+  min-width: 105px;
+  max-width: 105px;
+  background-color: #ffffff;
+  z-index: 10;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Sticky Column 2: Full Name */
+.sticky-name {
+  position: sticky;
+  left: 105px;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  background-color: #ffffff;
+  z-index: 10;
+  border-right: 2px solid #cbd5e1;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Header Top Row (Days) Sticky */
+.th-corner-sfid {
+  position: sticky;
+  left: 0;
+  top: 0;
+  width: 105px;
+  min-width: 105px;
+  background-color: #0f172a;
+  z-index: 20;
+  border-right: 1px solid #334155;
+}
+
+.th-corner-name {
+  position: sticky;
+  left: 105px;
+  top: 0;
+  width: 240px;
+  min-width: 240px;
+  background-color: #0f172a;
+  z-index: 20;
+  border-right: 2px solid #475569;
+}
+
+/* Header Bottom Row (Dates) Sticky */
+.th-sub-sfid {
+  position: sticky;
+  left: 0;
+  top: 28px;
+  width: 105px;
+  min-width: 105px;
+  background-color: #f8fafc;
+  z-index: 20;
+  border-right: 1px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.th-sub-name {
+  position: sticky;
+  left: 105px;
+  top: 28px;
+  width: 240px;
+  min-width: 240px;
+  background-color: #f8fafc;
+  z-index: 20;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  height: 7px;
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

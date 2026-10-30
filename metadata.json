@@ -1,0 +1,6 @@
+{
+  "name": "FFT SCHEDULE",
+  "description": "Enterprise FFT Operation Roster management application with live Google Sheets synchronization, shift comparison, and team leader views.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FFT SCHEDULE</title>
+  
+  <!-- Modern Calendar Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect width='18' height='18' x='3' y='4' rx='2'/><line x1='16' x2='16' y1='2' y2='6'/><line x1='8' x2='8' y1='2' y2='6'/><line x1='3' x2='21' y1='10' y2='10'/><path d='m9 16 2 2 4-4'/></svg>" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    table {
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+
+    /* Fixed Column 1: SF ID */
+    .sticky-sfid {
+      position: sticky;
+      left: 0;
+      width: 105px;
+      min-width: 105px;
+      max-width: 105px;
+      background-color: #ffffff;
+      z-index: 25;
+      border-right: 1px solid #e2e8f0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Fixed Column 2: Full Name */
+    .sticky-name {
+      position: sticky;
+      left: 105px;
+      width: 240px;
+      min-width: 240px;
+      max-width: 240px;
+      background-color: #ffffff;
+      z-index: 25;
+      border-right: 2px solid #cbd5e1;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* Header Top Row (Days) Sticky */
+    .th-corner-sfid {
+      position: sticky;
+      left: 0;
+      top: 0;
+      width: 105px;
+      min-width: 105px;
+      background-color: #0f172a;
+      z-index: 50;
+      border-right: 1px solid #334155;
+    }
+    .th-corner-name {
+      position: sticky;
+      left: 105px;
+      top: 0;
+      width: 240px;
+      min-width: 240px;
+      background-color: #0f172a;
+      z-index: 50;
+      border-right: 2px solid #475569;
+    }
+
+    /* Header Bottom Row (Dates) Sticky */
+    .th-sub-sfid {
+      position: sticky;
+      left: 0;
+      top: 28px;
+      width: 105px;
+      min-width: 105px;
+      background-color: #f8fafc;
+      z-index: 50;
+      border-right: 1px solid #cbd5e1;
+      border-bottom: 2px solid #cbd5e1;
+    }
+    .th-sub-name {
+      position: sticky;
+      left: 105px;
+      top: 28px;
+      width: 240px;
+      min-width: 240px;
+      background-color: #f8fafc;
+      z-index: 50;
+      border-right: 2px solid #94a3b8;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    /* Smooth Scrollbars */
+    ::-webkit-scrollbar { height: 7px; width: 6px; }
+    ::-webkit-scrollbar-track { background: #f8fafc; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+  <script>
+    // <<< YOUR GOOGLE APPS SCRIPT URL HERE >>>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzZ3kLxy4hoRqacbuZXWhlJipHBssAboaUngFi_zNBul-T0rGnBlaaNEDkVsZENTIaxIw/exec"; // Replace with your Apps Script URL
+  </script>
+
+  <!-- 1. Header Bar -->
+  <header class="bg-white border-b border-slate-200 px-4 py-2 shrink-0 z-50 shadow-2xs">
+    <div class="max-w-[99%] mx-auto flex items-center justify-between gap-3">
+      <!-- Title -->
+      <div class="flex items-center space-x-2.5">
+        <div class="p-1.5 bg-indigo-600 rounded-md text-white shadow-xs">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h1 class="text-sm font-black tracking-tight text-slate-900 leading-none uppercase">FFT SCHEDULE</h1>
+          <p class="text-[10px] text-slate-400 font-semibold tracking-wide">FFT Operation Roster</p>
+        </div>
+      </div>
+
+      <!-- Controls: Refresh, Month & Mode Switcher -->
+      <div class="flex items-center gap-2">
+        <!-- Live Instant Refresh Button -->
+        <button 
+          id="btnRefresh" 
+          onclick="triggerRefresh()" 
+          class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition active:scale-95 shadow-2xs cursor-pointer" 
+          title="Pull live changes from Google Sheet immediately">
+          <i data-lucide="refresh-cw" id="refreshIcon" class="w-3.5 h-3.5"></i>
+          <span id="refreshText">Refresh</span>
+        </button>
+
+        <!-- Month Selector -->
+        <div class="flex items-center bg-slate-100 rounded-md px-2 py-1 border border-slate-200 text-xs">
+          <span class="text-[10px] font-bold text-slate-400 mr-1.5 uppercase">Month:</span>
+          <select id="monthSelector" onchange="loadData(this.value)" class="bg-transparent font-bold text-slate-800 outline-none cursor-pointer text-xs">
+            <option>Loading...</option>
+          </select>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="inline-flex rounded-md bg-slate-100 p-0.5 border border-slate-200 text-xs font-semibold">
+          <button id="btnRosterView" onclick="switchView('roster')" class="px-2.5 py-1 rounded bg-white text-indigo-600 shadow-xs cursor-pointer">
+            Operation Roster
+          </button>
+          <button id="btnLeaderView" onclick="switchView('leader')" class="px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 cursor-pointer">
+            Team Leader View
+          </button>
+        </div>
+
+        <button onclick="resetFilters()" class="text-xs p-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 cursor-pointer" title="Reset Filters">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Clean Toolbar with Structured Swap Tool -->
+  <section class="bg-white border-b border-slate-200 px-4 py-1.5 shrink-0 z-40 text-xs">
+    <div class="max-w-[99%] mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+          <i data-lucide="arrow-left-right" class="w-3.5 h-3.5 text-indigo-600"></i> Swap Fliter:
+        </span>
+
+        <!-- Search Box & Dropdown Wrapper -->
+        <div class="relative w-80 sm:w-96" id="swapToolContainer">
+          <div class="relative">
+            <input 
+              type="text" 
+              id="agentSearchInput" 
+              placeholder="Search by name or SF ID..." 
+              onfocus="openAgentDropdown()"
+              oninput="filterAgentDropdown()"
+              class="w-full text-xs pl-8 pr-7 py-1 rounded-md border border-slate-300 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 hover:bg-white transition"
+            />
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1.5"></i>
+            <button onclick="clearSearchInput()" id="clearInputBtn" class="hidden absolute right-2.5 top-1 text-slate-400 hover:text-slate-600 font-bold text-xs">✕</button>
+          </div>
+
+          <!-- Structured Dropdown Menu (Flush under input) -->
+          <div id="agentDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-72 overflow-hidden z-50 flex flex-col">
+            <div class="bg-slate-50 px-3 py-1.5 border-b border-slate-200 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+              <span id="dropdownHeaderCount">Select agents to compare</span>
+              <button onclick="clearSelectedAgents()" id="clearAllSelectedBtn" class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold hidden">Clear All</button>
+            </div>
+
+            <div id="agentCheckboxList" class="overflow-y-auto divide-y divide-slate-100 p-1"></div>
+          </div>
+        </div>
+
+        <!-- Selected Agent Badges Bar -->
+        <div id="selectedAgentBadges" class="flex flex-wrap items-center gap-1.5 ml-1"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Main Workspace -->
+  <main class="flex-1 p-2 overflow-hidden flex flex-col">
+    <!-- Loader -->
+    <div id="loader" class="flex-1 flex flex-col items-center justify-center">
+      <div class="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-2 text-xs font-bold text-slate-500 uppercase tracking-widest">Loading FFT Schedule...</p>
+    </div>
+
+    <!-- VIEW 1: MASTER OPERATIONS ROSTER -->
+    <div id="rosterView" class="hidden flex-1 bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+      <div class="flex-1 overflow-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="sticky top-0 z-40">
+              <th class="th-corner-sfid px-3 py-1.5 text-slate-400 font-bold uppercase text-[10px]">FFT</th>
+              <th class="th-corner-name px-3 py-1.5 text-slate-400 font-bold uppercase text-[10px]">Operation Roster</th>
+              <th id="daysHeaderContainer" colspan="100" class="p-0"></th>
+            </tr>
+            <tr class="sticky top-[28px] z-40">
+              <th class="th-sub-sfid px-3 py-1.5 text-slate-700 font-extrabold text-[11px]">SF ID</th>
+              <th class="th-sub-name px-3 py-1.5 text-slate-700 font-extrabold text-[11px]">Full Name</th>
+            </tr>
+          </thead>
+          <tbody id="rosterTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VIEW 2: TEAM LEADER VIEW -->
+    <div id="leaderView" class="hidden flex-1 flex flex-col gap-2 overflow-hidden">
+      <div class="bg-white rounded-lg border border-slate-200 p-2.5 shrink-0 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-500 uppercase">Select Date:</span>
+          <select id="leaderDateSelect" onchange="renderLeaderView()" class="text-xs font-extrabold text-slate-900 border border-slate-300 rounded px-2 py-1 bg-slate-50 outline-none focus:ring-1 focus:ring-indigo-500"></select>
+        </div>
+
+        <div id="leaderHeadcountChips" class="flex flex-wrap items-center gap-1.5"></div>
+      </div>
+
+      <div class="flex-1 bg-white rounded-lg border border-slate-200 shadow-xs overflow-hidden flex flex-col">
+        <div class="px-4 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-800" id="leaderTableTitle">Roster Details</span>
+          <span class="text-xs text-slate-500" id="leaderTableSubtitle"></span>
+        </div>
+        <div class="flex-1 overflow-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100 sticky top-0 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="px-4 py-2 w-32">SF ID</th>
+                <th class="px-4 py-2">Full Name</th>
+                <th class="px-4 py-2 w-48">Shift / Leave Status</th>
+              </tr>
+            </thead>
+            <tbody id="leaderTableBody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Agent Details Modal -->
+  <div id="agentModal" class="hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto border border-slate-200 p-5">
+      <div class="flex items-center justify-between border-b pb-3 mb-3">
+        <div>
+          <span class="text-[10px] font-bold text-indigo-600 uppercase">SF ID: <span id="modalSfId"></span></span>
+          <h2 id="modalAgentName" class="text-base font-black text-slate-900"></h2>
+        </div>
+        <button onclick="closeModal()" class="p-1 rounded text-slate-400 hover:text-slate-700 bg-slate-100 cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="modalStatsGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-4"></div>
+      <h3 class="text-[11px] font-bold text-slate-400 uppercase mb-2">Schedule Breakdown</h3>
+      <div id="modalScheduleGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"></div>
+    </div>
+  </div>
+
+  <script>
+    let globalData = null;
+    let selectedAgentIds = new Set();
+    let leaderSelectedShift = "ALL";
+
+    // 1. Live Instant Refresh
+    async function triggerRefresh() {
+      const icon = document.getElementById("refreshIcon");
+      const text = document.getElementById("refreshText");
+      const btn = document.getElementById("btnRefresh");
+
+      icon.classList.add("animate-spin");
+      text.innerText = "Syncing...";
+      btn.classList.add("opacity-80");
+
+      const monthSel = document.getElementById("monthSelector");
+      const currentTab = (monthSel && monthSel.value && monthSel.value !== "Loading...") ? monthSel.value : "";
+      
+      await loadData(currentTab, true);
+
+      icon.classList.remove("animate-spin");
+      btn.classList.remove("opacity-80");
+      text.innerText = "Updated!";
+      setTimeout(() => {
+        text.innerText = "Refresh";
+      }, 1500);
+    }
+
+    // 2. Fetch Logic
+    async function loadData(tabName = "", isRefresh = false) {
+      if (!isRefresh) {
+        document.getElementById("loader").classList.remove("hidden");
+        document.getElementById("rosterView").classList.add("hidden");
+        document.getElementById("leaderView").classList.add("hidden");
+      }
+
+      try {
+        const uniqueKey = `live_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+        let url = API_URL;
+        if (tabName && tabName !== "Loading...") {
+          url += (url.includes("?") ? "&" : "?") + `tab=${encodeURIComponent(tabName)}&nocache=${uniqueKey}`;
+        } else {
+          url += (url.includes("?") ? "&" : "?") + `nocache=${uniqueKey}`;
+        }
+
+        const res = await fetch(url, { cache: "no-store" });
+        const data = await res.json();
+
+        if (!data || !data.agents) {
+          throw new Error("Invalid response received from Apps Script");
+        }
+
+        globalData = data;
+
+        // Populate Month Dropdown
+        const monthSel = document.getElementById("monthSelector");
+        monthSel.innerHTML = "";
+        globalData.tabs.forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.innerText = t;
+          if (t === globalData.activeTab) opt.selected = true;
+          monthSel.appendChild(opt);
+        });
+
+        // Date Selector for Leader View
+        const leaderDateSel = document.getElementById("leaderDateSelect");
+        const prevSelectedDate = leaderDateSel.value;
+        leaderDateSel.innerHTML = "";
+        globalData.dates.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d.date;
+          opt.innerText = `${d.date} (${d.day})`;
+          if (d.date === prevSelectedDate) opt.selected = true;
+          leaderDateSel.appendChild(opt);
+        });
+
+        renderAgentDropdownList();
+        buildRosterTableHeaders();
+        renderRosterTable();
+
+        if (!document.getElementById("leaderView").classList.contains("hidden")) {
+          renderLeaderView();
+        }
+
+        if (!isRefresh) {
+          document.getElementById("loader").classList.add("hidden");
+          switchView("roster");
+        }
+        lucide.createIcons();
+      } catch (err) {
+        console.error("Live fetch error:", err);
+        const text = document.getElementById("refreshText");
+        const icon = document.getElementById("refreshIcon");
+        if (text) text.innerText = "Refresh";
+        if (icon) icon.classList.remove("animate-spin");
+      }
+    }
+
+    // 3. Exact Color Palette
+    function getStatusStyle(status) {
+      const s = String(status).trim().toUpperCase();
+
+      // OFF -> Gray
+      if (s === "OFF") return "bg-slate-100 text-slate-500 border border-slate-300 font-semibold";
+      
+      // 23:00 -> Bold Red
+      if (s === "23:00") return "bg-red-100 text-red-800 border border-red-300 font-black";
+      
+      // 15:00 -> Warm Yellow
+      if (s === "15:00") return "bg-amber-100 text-amber-900 border border-amber-300 font-bold";
+
+      // Degrees of Green
+      if (s === "08:00" || s === "8:00") return "bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold";
+      if (s === "10:00") return "bg-emerald-200 text-emerald-950 border border-emerald-400 font-black";
+      if (s === "12:00") return "bg-teal-100 text-teal-900 border border-teal-300 font-bold";
+
+      // Other Shifts
+      if (s === "07:00" || s === "7:00") return "bg-cyan-100 text-cyan-800 border border-cyan-300 font-bold";
+      if (s === "14:00" || s === "16:00" || s === "17:00") return "bg-indigo-100 text-indigo-800 border border-indigo-300 font-bold";
+
+      // Leaves
+      if (s.includes("PH")) return "bg-purple-100 text-purple-900 border border-purple-300 font-black";
+      if (s.includes("CASUAL")) return "bg-stone-200 text-stone-900 border border-stone-400 font-bold";
+      if (s.includes("SICK")) return "bg-sky-100 text-sky-900 border border-sky-300 font-bold";
+      if (s.includes("ANNUAL")) return "bg-blue-100 text-blue-900 border border-blue-300 font-bold";
+      if (s.includes("UPL")) return "bg-rose-200 text-rose-950 border border-rose-400 font-extrabold";
+
+      return "bg-blue-50 text-blue-800 border border-blue-200 font-semibold";
+    }
+
+    // 4. View Switcher
+    function switchView(mode) {
+      const isRoster = mode === "roster";
+      document.getElementById("rosterView").classList.toggle("hidden", !isRoster);
+      document.getElementById("leaderView").classList.toggle("hidden", isRoster);
+
+      document.getElementById("btnRosterView").className = isRoster
+        ? "px-2.5 py-1 rounded bg-white text-indigo-600 shadow-xs font-bold cursor-pointer"
+        : "px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 cursor-pointer";
+
+      document.getElementById("btnLeaderView").className = !isRoster
+        ? "px-2.5 py-1 rounded bg-white text-indigo-600 shadow-xs font-bold cursor-pointer"
+        : "px-2.5 py-1 rounded text-slate-600 hover:text-slate-900 cursor-pointer";
+
+      if (!isRoster) renderLeaderView();
+      lucide.createIcons();
+    }
+
+    // 5. Table Headers
+    function buildRosterTableHeaders() {
+      const daysContainer = document.getElementById("daysHeaderContainer");
+      daysContainer.parentElement.innerHTML = `
+        <th class="th-corner-sfid px-3 py-1.5 text-slate-400 font-bold uppercase text-[10px]">FFT</th>
+        <th class="th-corner-name px-3 py-1.5 text-slate-400 font-bold uppercase text-[10px]">Operation Roster</th>
+        ${globalData.dates.map(d => `<th class="bg-slate-900 text-slate-300 text-center font-bold px-2 py-1.5 border-r border-slate-700 min-w-[78px] text-[10px] uppercase">${d.day.substring(0,3)}</th>`).join('')}
+      `;
+
+      const datesRow = document.querySelector("#rosterView thead tr:last-child");
+      datesRow.innerHTML = `
+        <th class="th-sub-sfid px-3 py-1.5 text-slate-700 font-extrabold text-[11px]">SF ID</th>
+        <th class="th-sub-name px-3 py-1.5 text-slate-700 font-extrabold text-[11px]">Full Name</th>
+        ${globalData.dates.map(d => `<th class="bg-slate-100 text-slate-800 text-center font-black px-2 py-1.5 border-r border-slate-200 border-b-2 border-slate-300 min-w-[78px] text-[11px]">${d.date}</th>`).join('')}
+      `;
+    }
+
+    // 6. Render Roster Grid
+    function renderRosterTable() {
+      const tbody = document.getElementById("rosterTableBody");
+      tbody.innerHTML = "";
+
+      let agentsToDisplay = globalData.agents;
+
+      if (selectedAgentIds.size > 0) {
+        agentsToDisplay = agentsToDisplay.filter(a => selectedAgentIds.has(a.sfId));
+      }
+
+      agentsToDisplay.forEach(agent => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 cursor-pointer group transition";
+        tr.onclick = () => openAgentModal(agent);
+
+        let rowHtml = `
+          <td class="sticky-sfid px-3 py-1.5 font-mono text-slate-600 font-bold group-hover:bg-slate-50">
+            ${agent.sfId}
+          </td>
+          <td class="sticky-name px-3 py-1.5 font-bold text-slate-900 truncate group-hover:bg-slate-50" title="${agent.name}">
+            ${agent.name}
+          </td>
+        `;
+
+        agent.schedule.forEach(s => {
+          rowHtml += `
+            <td class="px-1 py-1 text-center border-b border-r border-slate-100">
+              <span class="inline-block w-full py-0.5 px-0.5 rounded text-[10px] leading-tight ${getStatusStyle(s.status)}">
+                ${s.status}
+              </span>
+            </td>
+          `;
+        });
+
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 7. Structured Swap Dropdown Logic
+    function openAgentDropdown() {
+      document.getElementById("agentDropdown").classList.remove("hidden");
+      renderAgentDropdownList();
+    }
+
+    function closeAgentDropdown() {
+      document.getElementById("agentDropdown").classList.add("hidden");
+    }
+
+    function clearSearchInput() {
+      const input = document.getElementById("agentSearchInput");
+      input.value = "";
+      document.getElementById("clearInputBtn").classList.add("hidden");
+      renderAgentDropdownList();
+    }
+
+    function filterAgentDropdown() {
+      const query = document.getElementById("agentSearchInput").value.trim().toLowerCase();
+      document.getElementById("clearInputBtn").classList.toggle("hidden", query === "");
+      renderAgentDropdownList(query);
+    }
+
+    function renderAgentDropdownList(filterQuery = "") {
+      const list = document.getElementById("agentCheckboxList");
+      list.innerHTML = "";
+
+      if (!globalData || !globalData.agents) return;
+
+      const filtered = globalData.agents.filter(a => 
+        a.name.toLowerCase().includes(filterQuery) || 
+        a.sfId.toLowerCase().includes(filterQuery)
+      );
+
+      const headerCount = document.getElementById("dropdownHeaderCount");
+      const clearBtn = document.getElementById("clearAllSelectedBtn");
+
+      if (selectedAgentIds.size > 0) {
+        headerCount.innerText = `${selectedAgentIds.size} agent(s) selected for swap`;
+        clearBtn.classList.remove("hidden");
+      } else {
+        headerCount.innerText = `Select agents to compare for swaps`;
+        clearBtn.classList.add("hidden");
+      }
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<div class="p-3 text-center text-xs text-slate-400">No matching agents found</div>`;
+        return;
+      }
+
+      filtered.forEach(a => {
+        const isChecked = selectedAgentIds.has(a.sfId);
+        const item = document.createElement("label");
+        item.className = `flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition text-xs ${
+          isChecked ? 'bg-indigo-50/90 font-bold border-l-2 border-indigo-600' : 'hover:bg-slate-50'
+        }`;
+        
+        item.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <input 
+              type="checkbox" 
+              value="${a.sfId}" 
+              ${isChecked ? 'checked' : ''} 
+              onchange="toggleAgentSelection('${a.sfId}')" 
+              class="w-3.5 h-3.5 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
+            >
+            <span class="text-slate-800 truncate">${a.name}</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400 bg-white border border-slate-200 px-1 py-0.2 rounded ml-2 shrink-0">${a.sfId}</span>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function toggleAgentSelection(sfId) {
+      if (selectedAgentIds.has(sfId)) {
+        selectedAgentIds.delete(sfId);
+      } else {
+        selectedAgentIds.add(sfId);
+      }
+      renderSelectedAgentBadges();
+      renderAgentDropdownList(document.getElementById("agentSearchInput").value.trim().toLowerCase());
+      renderRosterTable();
+    }
+
+    function renderSelectedAgentBadges() {
+      const container = document.getElementById("selectedAgentBadges");
+      container.innerHTML = "";
+
+      selectedAgentIds.forEach(id => {
+        const agent = globalData.agents.find(a => a.sfId === id);
+        if (!agent) return;
+        const b = document.createElement("span");
+        b.className = "inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-2xs";
+        b.innerHTML = `${agent.name.split(" ")[0]} <button onclick="toggleAgentSelection('${id}')" class="hover:text-red-500 font-black cursor-pointer">×</button>`;
+        container.appendChild(b);
+      });
+    }
+
+    function clearSelectedAgents() {
+      selectedAgentIds.clear();
+      renderSelectedAgentBadges();
+      renderAgentDropdownList(document.getElementById("agentSearchInput").value.trim().toLowerCase());
+      renderRosterTable();
+    }
+
+    document.addEventListener("click", e => {
+      const container = document.getElementById("swapToolContainer");
+      if (container && !container.contains(e.target)) {
+        closeAgentDropdown();
+      }
+    });
+
+    // 8. Team Leader View
+    function renderLeaderView() {
+      if (!globalData) return;
+      const targetDate = document.getElementById("leaderDateSelect").value;
+      const shiftCounts = {};
+      const agentRows = [];
+
+      globalData.agents.forEach(agent => {
+        const match = agent.schedule.find(s => s.date === targetDate);
+        const status = match ? match.status : "OFF";
+        shiftCounts[status] = (shiftCounts[status] || 0) + 1;
+
+        if (leaderSelectedShift === "ALL" || status === leaderSelectedShift) {
+          agentRows.push({ sfId: agent.sfId, name: agent.name, status: status });
+        }
+      });
+
+      const chipsContainer = document.getElementById("leaderHeadcountChips");
+      chipsContainer.innerHTML = "";
+
+      const allBtn = document.createElement("button");
+      allBtn.className = `px-2 py-0.5 text-xs rounded-full font-bold border cursor-pointer ${leaderSelectedShift === 'ALL' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200'}`;
+      allBtn.innerText = `All (${globalData.agents.length})`;
+      allBtn.onclick = () => { leaderSelectedShift = "ALL"; renderLeaderView(); };
+      chipsContainer.appendChild(allBtn);
+
+      Object.keys(shiftCounts).sort().forEach(stat => {
+        const btn = document.createElement("button");
+        btn.className = `px-2 py-0.5 text-xs rounded-full font-bold border cursor-pointer ${leaderSelectedShift === stat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-200'}`;
+        btn.innerText = `${stat}: ${shiftCounts[stat]}`;
+        btn.onclick = () => {
+          leaderSelectedShift = (leaderSelectedShift === stat) ? "ALL" : stat;
+          renderLeaderView();
+        };
+        chipsContainer.appendChild(btn);
+      });
+
+      document.getElementById("leaderTableTitle").innerText = `Roster for ${targetDate}`;
+      document.getElementById("leaderTableSubtitle").innerText = leaderSelectedShift === "ALL" 
+        ? `Showing all ${agentRows.length} agents` 
+        : `Showing ${agentRows.length} agents in "${leaderSelectedShift}"`;
+
+      const tbody = document.getElementById("leaderTableBody");
+      tbody.innerHTML = "";
+
+      agentRows.forEach(a => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="px-4 py-2 font-mono font-bold text-slate-600">${a.sfId}</td>
+          <td class="px-4 py-2 font-bold text-slate-900">${a.name}</td>
+          <td class="px-4 py-2">
+            <span class="inline-block px-2.5 py-0.5 rounded text-xs ${getStatusStyle(a.status)}">
+              ${a.status}
+            </span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 9. Agent Details Modal
+    function openAgentModal(agent) {
+      document.getElementById("modalSfId").innerText = agent.sfId;
+      document.getElementById("modalAgentName").innerText = agent.name;
+
+      const counts = {};
+      agent.schedule.forEach(s => {
+        counts[s.status] = (counts[s.status] || 0) + 1;
+      });
+
+      const statsGrid = document.getElementById("modalStatsGrid");
+      statsGrid.innerHTML = "";
+      Object.keys(counts).forEach(k => {
+        const box = document.createElement("div");
+        box.className = "p-1.5 rounded bg-slate-50 border border-slate-200 text-center";
+        box.innerHTML = `<div class="text-[9px] font-bold text-slate-400 uppercase truncate">${k}</div><div class="text-sm font-black text-slate-800">${counts[k]}</div>`;
+        statsGrid.appendChild(box);
+      });
+
+      const schedGrid = document.getElementById("modalScheduleGrid");
+      schedGrid.innerHTML = "";
+      agent.schedule.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "p-1.5 rounded border border-slate-200 bg-white flex flex-col justify-between";
+        card.innerHTML = `
+          <div class="flex justify-between items-center text-[10px]">
+            <span class="font-bold text-slate-400 uppercase">${s.day.substring(0,3)}</span>
+            <span class="font-extrabold text-slate-700">${s.date}</span>
+          </div>
+          <div class="mt-1 text-center">
+            <span class="inline-block w-full py-0.5 text-[10px] rounded ${getStatusStyle(s.status)}">${s.status}</span>
+          </div>
+        `;
+        schedGrid.appendChild(card);
+      });
+
+      document.getElementById("agentModal").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById("agentModal").classList.add("hidden");
+    }
+
+    function resetFilters() {
+      clearSelectedAgents();
+      clearSearchInput();
+      leaderSelectedShift = "ALL";
+      if (!document.getElementById("leaderView").classList.contains("hidden")) {
+        renderLeaderView();
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      loadData();
+    });
+  </script>
+</body>
+</html>
